@@ -9,11 +9,6 @@ struct LauncherHomeView: View {
     let openSetup: () -> Void
     let openLibrary: () -> Void
 
-    @State private var isBackingUp = false
-    @State private var isRestoring = false
-    @State private var notice = ""
-    @State private var showingNotice = false
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 25) {
@@ -37,11 +32,6 @@ struct LauncherHomeView: View {
         .task {
             if system.snapshot == nil { await system.refresh() }
             if !prefixes.hasLoaded { await prefixes.load() }
-        }
-        .alert("Operation result", isPresented: $showingNotice) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(notice)
         }
     }
 
@@ -102,12 +92,7 @@ struct LauncherHomeView: View {
             VStack(alignment: .leading, spacing: 12) {
                 sectionLabel("QUICK ACCESS")
                 LauncherAction(title: "Set up Steam Play", subtitle: "Install, repair and configure", symbol: "bolt.fill", tinted: true, perform: openSetup)
-                LauncherAction(title: "Backup CrossOver bottles", subtitle: "Safeguard bottle registries", symbol: "externaldrive.badge.plus", disabled: isBackingUp || isRestoring) {
-                    Task { await backupBottles() }
-                }
-                LauncherAction(title: "Restore saved settings", subtitle: "Restore your original backup", symbol: "arrow.uturn.backward.circle", disabled: isBackingUp || isRestoring) {
-                    Task { await restoreSettings() }
-                }
+                LauncherAction(title: "CrossOver trial & licence", subtitle: "Check activation and official trial status", symbol: "checkmark.shield.fill", perform: openSetup)
                 LauncherAction(title: "Show application log", subtitle: "Inspect diagnostics in Finder", symbol: "doc.text.magnifyingglass") {
                     NSWorkspace.shared.activateFileViewerSelecting([AppLog.file])
                 }
@@ -131,7 +116,7 @@ struct LauncherHomeView: View {
                 Divider().overlay(LauncherUI.border)
                 healthLine("Game prefixes", value: "\(prefixes.prefixes.count) detected", symbol: "square.stack.3d.up.fill")
                 Divider().overlay(LauncherUI.border)
-                healthLine("Saved snapshots", value: "\(prefixes.backups.count) available", symbol: "archivebox.fill")
+                healthLine("CrossOver access", value: crossOverState, symbol: "checkmark.shield.fill")
                 if let issue = system.failure {
                     Text(issue)
                         .font(.system(size: 11, weight: .medium))
@@ -163,7 +148,7 @@ struct LauncherHomeView: View {
                     .background(LauncherUI.elevated, in: RoundedRectangle(cornerRadius: 16))
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Windows game environments").font(.system(size: 17, weight: .bold))
-                    Text("Manage prefixes, run programs, repair Windows runtimes and protect game data.")
+                    Text("Manage prefixes, run programs and repair Windows runtimes.")
                         .font(.system(size: 12))
                         .foregroundStyle(LauncherUI.secondary)
                 }
@@ -209,19 +194,14 @@ struct LauncherHomeView: View {
         }
     }
 
-    private func backupBottles() async {
-        isBackingUp = true
-        defer { isBackingUp = false }
-        do { notice = try await CrossOverBottleBackup.run() }
-        catch { notice = error.localizedDescription }
-        showingNotice = true
-    }
-
-    private func restoreSettings() async {
-        isRestoring = true
-        defer { isRestoring = false }
-        do { notice = try await CrossOverFirstRunDateRestore.run() }
-        catch { notice = error.localizedDescription }
-        showingNotice = true
+    private var crossOverState: String {
+        guard let snapshot = system.snapshot else { return "Checking…" }
+        guard !snapshot.crossOver.isEmpty else { return "Not installed" }
+        let licenses = snapshot.crossOverLicense.values
+        if let trial = licenses.first(where: { $0.detail.localizedCaseInsensitiveContains("trial is active") }) {
+            return trial.detail
+        }
+        if licenses.contains(where: { $0.licensed }) { return "Activated" }
+        return "Not activated"
     }
 }

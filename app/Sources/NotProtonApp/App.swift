@@ -42,8 +42,6 @@ struct NotProtonApp: App {
                 .keyboardShortcut("1", modifiers: .command)
             Button("Game Library") { pane = .prefixes }
                 .keyboardShortcut("2", modifiers: .command)
-            Button("Vault") { pane = .backups }
-                .keyboardShortcut("3", modifiers: .command)
 
             Divider()
 
@@ -51,7 +49,7 @@ struct NotProtonApp: App {
                 Task {
                     switch pane {
                     case .status: await status.refresh()
-                    case .prefixes, .backups: await prefixes.load()
+                    case .prefixes: await prefixes.load()
                     }
                 }
             }
@@ -115,13 +113,6 @@ struct NotProtonApp: App {
             .disabled(prefixes.selectedPrefix == nil)
 
             Divider()
-
-            Button(PrefixPrompt.backUpButton(selectionTargets)) {
-                if !selectionTargets.isEmpty {
-                    prefixes.pendingConfirmation = .backUp(selectionTargets)
-                }
-            }
-            .disabled(selectionTargets.isEmpty)
 
             if prefixes.tools.count > 1 {
                 Menu(PrefixPrompt.rebuildButton(selectionTargets)) {

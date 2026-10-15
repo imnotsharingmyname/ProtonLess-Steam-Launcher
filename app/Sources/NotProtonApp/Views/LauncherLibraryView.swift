@@ -5,7 +5,6 @@ struct LauncherLibraryView: View {
     @Environment(PrefixesModel.self) private var model
     @State private var query = ""
     @State private var deleting: WinePrefix?
-    @State private var backingUp: WinePrefix?
     @State private var rebuilding: (prefix: WinePrefix, tool: InstalledTool)?
 
     private var shown: [WinePrefix] {
@@ -77,26 +76,16 @@ struct LauncherLibraryView: View {
         } message: {
             Text("This deletes the Windows prefix, including any game saves stored inside it. This cannot be undone.")
         }
-        .confirmationDialog("Backup game environment?", isPresented: Binding(
-            get: { backingUp != nil }, set: { if !$0 { backingUp = nil } }
-        ), titleVisibility: .visible) {
-            Button("Create backup") {
-                guard let selected = backingUp else { return }
-                backingUp = nil
-                Task { await model.backUp([selected]) }
-            }
-            Button("Cancel", role: .cancel) { backingUp = nil }
-        } message: { Text("Save this Windows environment for recovery.") }
         .confirmationDialog("Rebuild compatibility files?", isPresented: Binding(
             get: { rebuilding != nil }, set: { if !$0 { rebuilding = nil } }
         ), titleVisibility: .visible) {
-            Button("Rebuild and keep backup") {
+            Button("Rebuild compatibility files") {
                 guard let choice = rebuilding else { return }
                 rebuilding = nil
                 Task { await model.recreate([choice.prefix], as: choice.tool, keepBackup: true) }
             }
             Button("Cancel", role: .cancel) { rebuilding = nil }
-        } message: { Text("Rebuild the compatibility files and preserve a backup of the old prefix first.") }
+        } message: { Text("A safety copy is created automatically before compatibility files are rebuilt.") }
     }
 
     private var emptyState: some View {
@@ -170,7 +159,6 @@ struct LauncherLibraryView: View {
                     .disabled(disabled)
                     Menu {
                         Button("Reveal prefix in Finder", systemImage: "folder") { model.reveal(prefix) }
-                        Button("Create backup", systemImage: "externaldrive.badge.plus") { backingUp = prefix }
                         ForEach(WineTool.allCases, id: \.self) { tool in
                             Button(tool.label) { model.open(tool, for: prefix) }
                         }

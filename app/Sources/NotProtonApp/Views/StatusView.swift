@@ -160,15 +160,6 @@ struct StatusRow: View {
 
 struct StatusView: View {
     @Environment(SystemStatus.self) private var status
-    @State private var isBackingUpBottles = false
-    @State private var backupMessage = ""
-    @State private var backupSucceeded = false
-    @State private var showBackupAlert = false
-    @State private var isRestoringSettings = false
-    @State private var restoreMessage = ""
-    @State private var restoreSucceeded = false
-    @State private var showRestoreAlert = false
-
     private static let updateBlockPrompt =
         "Steam client updates may break ProtonLess Steam. If you don't want to wait for "
             + "ProtonLess Steam to be updated to be compatible with future Steam versions at the "
@@ -266,22 +257,6 @@ struct StatusView: View {
                     + "cannot be installed without a valid license."
             )
         }
-        .alert(
-            restoreSucceeded ? "CrossOver settings restored" : "CrossOver settings restore failed",
-            isPresented: $showRestoreAlert
-        ) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(restoreMessage)
-        }
-        .alert(
-            backupSucceeded ? "Bottle backups completed" : "Bottle backup failed",
-            isPresented: $showBackupAlert
-        ) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(backupMessage)
-        }
         .task { if status.snapshot == nil { await status.refresh() } }
         .confirmationDialog(
             CrossOverLicense.notActivatedTitle,
@@ -370,21 +345,10 @@ struct StatusView: View {
             } header: {
                 Text("CrossOver")
             } footer: {
-                HStack(spacing: 8) {
+                HStack {
                     Spacer()
-                    if isRestoringSettings {
-                        ProgressView().controlSize(.small)
-                    }
-                    Button(isRestoringSettings ? "Restoring…" : "Restore Settings") {
-                        restoreCrossOverSettings()
-                    }
-                        .disabled(!status.isIdle || isBackingUpBottles || isRestoringSettings)
-                        .help("Restore CrossOver FirstRunDate from the saved Desktop backup; CrossOver must be closed.")
-                    Button("Backup Bottles") { backUpCrossOverBottles() }
-                        .disabled(!status.isIdle || isBackingUpBottles || isRestoringSettings)
-                        .help("Back up each CrossOver bottle's system.reg alongside the original.")
-                    Button("Add CrossOver\u{2026}") { Task { await status.addCrossOver() } }
-                        .disabled(!status.isIdle || isBackingUpBottles || isRestoringSettings)
+                    Button("Add CrossOver…") { Task { await status.addCrossOver() } }
+                        .disabled(!status.isIdle)
                         .help("Add a copy of CrossOver from another folder.")
                 }
             }
@@ -394,38 +358,6 @@ struct StatusView: View {
             dangerSection
         }
         .formStyle(.grouped)
-    }
-
-    private func backUpCrossOverBottles() {
-        guard !isBackingUpBottles, !isRestoringSettings, status.isIdle else { return }
-        isBackingUpBottles = true
-        Task {
-            defer { isBackingUpBottles = false }
-            do {
-                backupMessage = try await CrossOverBottleBackup.run()
-                backupSucceeded = true
-            } catch {
-                backupMessage = error.localizedDescription
-                backupSucceeded = false
-            }
-            showBackupAlert = true
-        }
-    }
-
-    private func restoreCrossOverSettings() {
-        guard !isRestoringSettings, !isBackingUpBottles, status.isIdle else { return }
-        isRestoringSettings = true
-        Task {
-            defer { isRestoringSettings = false }
-            do {
-                restoreMessage = try await CrossOverFirstRunDateRestore.run()
-                restoreSucceeded = true
-            } catch {
-                restoreMessage = error.localizedDescription
-                restoreSucceeded = false
-            }
-            showRestoreAlert = true
-        }
     }
 
     private var dangerSection: some View {

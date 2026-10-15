@@ -15,7 +15,6 @@ This isn't just a new colour scheme. It's an entirely different launcher experie
 - **New Launcher Dashboard** — An immersive home screen with quick access to essential tools.
 - **Right-Side Navigation** — A distinctive navigation system replacing the traditional sidebar layout.
 - **Game Library Gallery** — Browse and manage game prefixes through modern cards.
-- **Snapshot Vault** — A dedicated space for managing prefix backups.
 - **Fresh Visual Identity** — Graphite backgrounds, coral accents, custom buttons and original iconography.
 
 ### 🎮 Steam Play Integration
@@ -31,18 +30,18 @@ This isn't just a new colour scheme. It's an entirely different launcher experie
 - Launch Windows executables (`.exe`) within selected prefixes.
 - Access Wine utilities and game folders.
 - Rebuild or remove prefixes.
-- Back up game environments.
 
-### 💾 Backup & Recovery
+### 🍷 CrossOver Trial & Licence Status
 
-- Create and manage game prefix snapshots.
-- Back up CrossOver bottle registry files.
-- Restore previously saved CrossOver preference settings.
+- Detect an active official 14-day CrossOver free trial and show the remaining days.
+- Recognise supported activated installations.
+- Open the Setup Center to inspect activation status and manage Steam Play compatibility.
+- **No trial reset, licence bypass, or unlimited free use.** CrossOver requires valid eligibility or a purchased licence after its trial expires.
 
 ### ⚙️ Advanced Setup Center
 
 - Detailed compatibility diagnostics.
-- CrossOver installation and licence-status detection.
+- CrossOver installation and licence-status detection, including official trial status.
 - Steam repair and maintenance tools.
 - Controller permission management.
 - Steam client update controls.

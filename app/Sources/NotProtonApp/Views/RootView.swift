@@ -2,14 +2,13 @@ import SwiftUI
 
 // New right-rail shell: no NavigationSplitView, sidebar or inherited forms.
 enum Pane: String, CaseIterable, Identifiable, Hashable {
-    case status, prefixes, backups
+    case status, prefixes
     var id: String { rawValue }
 
     var label: String {
         switch self {
         case .status: "Discover"
         case .prefixes: "Game library"
-        case .backups: "Vault"
         }
     }
 
@@ -17,7 +16,6 @@ enum Pane: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .status: "sparkles.rectangle.stack.fill"
         case .prefixes: "square.stack.3d.up.fill"
-        case .backups: "archivebox.fill"
         }
     }
 }
@@ -37,7 +35,6 @@ struct RootView: View {
                     switch pane {
                     case .status: LauncherHomeView(openSetup: { showSetup = true }, openLibrary: { pane = .prefixes })
                     case .prefixes: LauncherLibraryView()
-                    case .backups: LauncherVaultView()
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
