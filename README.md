@@ -1,35 +1,86 @@
-# ProtonLess Steam — Launcher Edition
+# 🎮 ProtonLess Steam — Launcher Edition v0.1.0
 
-> Steam Play integration for macOS, with an original game-launcher interface.
+### A new way to experience Windows gaming on Mac.
 
-## A different experience
+Introducing **ProtonLess Steam — Launcher Edition**, an experimental macOS gaming compatibility application featuring a completely redesigned interface inspired by modern gaming platforms.
 
-This is not a recolouring of the original UI. Launcher Edition replaces the split-view/sidebar workflow with a **right-side launcher rail**, an editorial Home screen, a library **card gallery**, a snapshot **vault**, and left-anchored action tiles. Its identity is graphite, coral, and pale orange, with an original portal/play icon.
+Built around Steam Play integration and CrossOver compatibility, Launcher Edition delivers a fresh experience for managing Windows games on Apple Silicon Macs.
 
-### Core functions retained
+This isn't just a new colour scheme. It's an entirely different launcher experience built on an existing open-source compatibility foundation.
 
-- Steam Play installation, update and repair
-- CrossOver runner detection, supported previews and activation/trial **detection**
-- Setup of patched CrossOver runners and compatibility tools
-- Game prefixes, Run .exe, Finder access, Wine tools, rebuilds and deletions
-- Back up game prefixes and manage snapshot files
-- CrossOver bottle registry backup
-- Restore a *previously saved* CrossOver FirstRunDate preference
-- Steam controller permission, update blocking, Valve binary fetches and diagnostics
-- macOS Apple Silicon automated app builds and release packaging
+## ✨ What's New?
 
-To use any advanced operations, select **SETUP** at the bottom of the right navigation rail. The original safety confirmations and detailed diagnostics remain available there. The new home shortcuts for bottle backup and preference restoration run without Terminal but do not manipulate licensing eligibility.
+### 🎨 Completely Redesigned Interface
 
-## Build
+- **New Launcher Dashboard** — An immersive home screen with quick access to essential tools.
+- **Right-Side Navigation** — A distinctive navigation system replacing the traditional sidebar layout.
+- **Game Library Gallery** — Browse and manage game prefixes through modern cards.
+- **Snapshot Vault** — A dedicated space for managing prefix backups.
+- **Fresh Visual Identity** — Graphite backgrounds, coral accents, custom buttons and original iconography.
 
-The repository is created by the accompanying Launch Kit. The source still uses the proven compatibility engine from NotProton, with important internal loader names and SwiftPM resource paths preserved for compatibility.
+### 🎮 Steam Play Integration
 
-On macOS with the documented toolchain, build using `make app`, or select **Actions → Build ProtonLess Steam (macOS)**. The release artifact is `ProtonLess-Steam.zip` containing `ProtonLess Steam.app`, minimum macOS 26.0. GitHub builds are ad-hoc signed and not notarized.
+- Install and configure Steam Play compatibility components.
+- Set up patched CrossOver runners and compatibility tools.
+- Manage Steam integration, updates and repairs.
+- Fetch required Valve components.
 
-The GitHub Actions builder may have additional requirements or third-party dependencies; follow `BUILD_ON_GITHUB.md` before compiling.
+### 🕹️ Game Management
 
-## Provenance and licensing
+- Discover existing Steam Play prefixes.
+- Launch Windows executables (`.exe`) within selected prefixes.
+- Access Wine utilities and game folders.
+- Rebuild or remove prefixes.
+- Back up game environments.
 
-**This project is a derivative of [NotProton-FES](https://github.com/imnotsharingmyname/NotProton-FES) and upstream NotProton.** The launcher UI, layout and artwork are new; the underlying Steam Play engine and runtime integrations are not newly invented. Retained `notproton` internal identifiers are compatibility requirements and do not represent user-facing branding.
+### 💾 Backup & Recovery
 
-`NOTICE`, `LICENSE`, `LICENSE.lsteamclient`, and `LICENSE.steam-shim` are retained, along with third-party copyright/licence information and original source notices. Any distribution must honour their terms. Not affiliated with Valve, CodeWeavers or Epic Games.
+- Create and manage game prefix snapshots.
+- Back up CrossOver bottle registry files.
+- Restore previously saved CrossOver preference settings.
+
+### ⚙️ Advanced Setup Center
+
+- Detailed compatibility diagnostics.
+- CrossOver installation and licence-status detection.
+- Steam repair and maintenance tools.
+- Controller permission management.
+- Steam client update controls.
+- Safety confirmations for destructive operations.
+
+## 🍎 System Requirements
+
+- **Platform:** macOS 26.0 or later
+- **Architecture:** Apple Silicon (ARM64)
+- **Dependencies:** Steam and a compatible CrossOver installation for relevant functionality
+
+## 📥 Installation
+
+1. Download `ProtonLess-Steam.zip` from the release assets.
+2. Extract the archive.
+3. Move `ProtonLess Steam.app` to your Applications folder.
+4. Launch the application and open **SETUP** to configure your environment.
+
+**Note:** GitHub builds are ad-hoc signed and not Apple-notarized. macOS may require additional approval before opening the application.
+
+## ⚠️ Experimental Release
+
+This is an early public preview.
+
+Although automated builds and tests have passed for the release candidate, individual game compatibility, performance and stability may vary. Not every Windows game is expected to work.
+
+Please report bugs, crashes and feature requests through GitHub Issues.
+
+## ❤️ Credits & Open Source
+
+ProtonLess Steam — Launcher Edition introduces an original interface and visual identity while retaining compatibility code derived from **NotProton.**
+
+The original open-source licences, notices and third-party attributions remain applicable.
+
+This project is independent and is not affiliated with Valve, Steam, CodeWeavers or Epic Games.
+
+---
+
+**ProtonLess Steam — Your games. No boundaries. 🚀**
+
+*Built for the Mac gaming community.*
