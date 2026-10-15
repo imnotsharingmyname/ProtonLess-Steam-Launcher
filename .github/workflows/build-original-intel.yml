@@ -1,0 +1,33 @@
+name: Intel original ProtonLess Steam (port validation)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-26-intel
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: brew install cmake mingw-w64 bison flex
+      - name: Fetch pinned Dobby
+        run: |
+          git clone https://github.com/jmpews/Dobby.git vendor/dobby
+          git -C vendor/dobby checkout 5dfc8546954ce3b3198132ab13fddb89ee92cdd7
+      - name: Build original Intel engine
+        run: make ARCH=x86_64 dobby && make ARCH=x86_64 dylib
+      - name: Build Wine bridge
+        run: make ARCH=x86_64 bridge
+      - name: Build original app
+        run: make ARCH=x86_64 app
+      - name: Validate genuine x86_64 binaries
+        run: |
+          lipo -verify_arch x86_64 'out/ProtonLess Steam.app/Contents/MacOS/ProtonLessSteam'
+          lipo -verify_arch x86_64 'out/notproton.dylib'
+          bash scripts/verify-protonless-app.sh 'out/ProtonLess Steam.app' x86_64
+      - name: Save diagnostic build only
+        uses: actions/upload-artifact@v4
+        with:
+          name: ProtonLess-Steam-Original-Intel-Engine-UNVERIFIED
+          path: out/ProtonLess Steam.app

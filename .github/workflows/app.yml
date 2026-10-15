@@ -1,0 +1,139 @@
+name: Build ProtonLess Steam (macOS)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  DOBBY_COMMIT: "5dfc8546954ce3b3198132ab13fddb89ee92cdd7"
+
+jobs:
+  build:
+    name: Build Apple Silicon macOS app
+    runs-on: xcode-27
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure build helpers are executable
+        run: |
+          # Defensive fallback if a source upload strips Unix executable bits.
+          chmod +x bridge/*.sh bridge/pe-info.py lsteamclient/*.sh \
+            steam-shim/*.sh ntdll-patch/*.sh dylib/feats/*.sh \
+            dylib/tests/*.sh scripts/*.sh
+
+      - name: Record the toolchain
+        run: |
+          # The xcode-27 runner label selects the Xcode 27 image.
+          # Do not assume an exact /Applications/Xcode_27.0.app path.
+          xcodebuild -version
+          swift --version
+          echo "macOS SDK $(xcrun --sdk macosx --show-sdk-version)"
+
+      - name: Install cross compilers
+        run: brew install mingw-w64 bison flex
+
+      - name: Clone Dobby at the pinned commit
+        run: |
+          git clone --no-checkout https://github.com/jmpews/Dobby.git vendor/dobby
+          git -C vendor/dobby checkout $DOBBY_COMMIT
+
+      - name: Restore Dobby build cache
+        id: dobby-cache
+        uses: actions/cache@v4
+        with:
+          path: build/dobby
+          key: dobby-xcode-27-${{ env.DOBBY_COMMIT }}-${{ runner.arch }}
+
+      - name: Build Dobby
+        if: steps.dobby-cache.outputs.cache-hit != 'true'
+        run: make dobby
+
+      - name: Restore the Wine trees
+        id: wine-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            scratch/wine
+            scratch/wine-build-dual
+            scratch/wine-build-arm64
+          key: wine-xcode-27-${{ hashFiles('bridge/setup-wine-tree.sh', 'bridge/register-components.diff') }}
+
+      - name: Restore Proton tarball cache
+        uses: actions/cache@v4
+        with:
+          path: scratch/proton-lsc
+          key: proton-tarball-${{ hashFiles('lsteamclient/fetch.sh') }}
+
+      - name: Build the dylib
+        run: make all
+
+      - name: Build the overlay shim
+        run: make overlay-shim
+
+      - name: Build helpers
+        run: make iconmaker appinfo
+
+      - name: Build the bridge
+        run: make bridge
+
+      - name: Save the Wine trees
+        if: steps.wine-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            scratch/wine
+            scratch/wine-build-dual
+            scratch/wine-build-arm64
+          key: wine-xcode-27-${{ hashFiles('bridge/setup-wine-tree.sh', 'bridge/register-components.diff') }}
+
+      - name: Stage the app payload
+        run: make app-payload
+
+      - name: Build the app
+        run: make app
+
+      - name: Run the hermetic C suites
+        run: |
+          make -s sigcheck
+          make -s callscheck
+          make -s webpatch-fixtures
+          make -s peicon-fixtures
+          make -s panel-behavior
+          make -s spawn-env
+          make -s compatcheck
+          make -s compatsvc-check
+          make -s launch-shell
+          make -s envcheck
+          make -s buildcheck
+          make -s settingscheck
+          make -s routecheck
+          make -s bridgecheck
+          make -s gamedrivecheck
+          make -s seedcheck
+
+      - name: Run the Swift tests
+        run: make -s app-tests
+
+      - name: Verify the ProtonLess Steam app
+        run: bash scripts/verify-protonless-app.sh
+
+      - name: Package the app bundle
+        run: |
+          mkdir -p out/artifact
+          ditto -c -k --keepParent "out/ProtonLess Steam.app" out/artifact/ProtonLess-Steam.zip
+          unzip -t out/artifact/ProtonLess-Steam.zip >/dev/null
+
+      - name: Upload the macOS app ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: ProtonLess-Steam-macOS-Apple-Silicon
+          path: out/artifact/ProtonLess-Steam.zip
+          if-no-files-found: error
+          retention-days: 30
