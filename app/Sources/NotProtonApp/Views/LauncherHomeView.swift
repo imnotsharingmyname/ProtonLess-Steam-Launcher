@@ -200,7 +200,7 @@ struct LauncherHomeView: View {
 
     private var steamState: String {
         guard let state = system.snapshot?.steam else { return "Checking…" }
-        switch state {
+        return switch state {
         case .installed: "Installed"
         case .outdated: "Update available"
         case .notInstalled: "Not installed"
