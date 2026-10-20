@@ -21,12 +21,12 @@ jobs:
       HYDRA_TORRENT_BRIDGE_FROM_SOURCE: "1"
       CARGO_PROFILE_RELEASE_STRIP: "none"
       MACOSX_DEPLOYMENT_TARGET: "11.0"
-      MAIN_VITE_API_URL: ${{ vars.MAIN_VITE_API_URL }}
-      MAIN_VITE_AUTH_URL: ${{ vars.MAIN_VITE_AUTH_URL }}
-      MAIN_VITE_CHECKOUT_URL: ${{ vars.MAIN_VITE_CHECKOUT_URL }}
-      MAIN_VITE_NIMBUS_API_URL: ${{ vars.MAIN_VITE_NIMBUS_API_URL }}
-      RENDERER_VITE_EXTERNAL_RESOURCES_URL: ${{ vars.EXTERNAL_RESOURCES_URL }}
-      MAIN_VITE_EXTERNAL_RESOURCES_URL: ${{ vars.EXTERNAL_RESOURCES_URL }}
+      MAIN_VITE_API_URL: ${{ vars.MAIN_VITE_API_URL || 'https://hydra-api-us-east-1.losbroxas.org' }}
+      MAIN_VITE_AUTH_URL: ${{ vars.MAIN_VITE_AUTH_URL || 'https://auth.hydra.losbroxas.org' }}
+      MAIN_VITE_CHECKOUT_URL: ${{ vars.MAIN_VITE_CHECKOUT_URL || 'https://checkout.hydralauncher.gg' }}
+      MAIN_VITE_NIMBUS_API_URL: ${{ vars.MAIN_VITE_NIMBUS_API_URL || 'https://api.hydranimbus.com' }}
+      RENDERER_VITE_EXTERNAL_RESOURCES_URL: ${{ vars.EXTERNAL_RESOURCES_URL || 'https://assets.hydralauncher.gg' }}
+      MAIN_VITE_EXTERNAL_RESOURCES_URL: ${{ vars.EXTERNAL_RESOURCES_URL || 'https://assets.hydralauncher.gg' }}
     steps:
       - name: Checkout builder branch
         uses: actions/checkout@v4
@@ -52,6 +52,20 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - name: Install native source compilation tools
         run: brew install cmake ninja pkg-config autoconf automake libtool
+      - name: Confirm Hydra service endpoints for catalogue and sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          for key in MAIN_VITE_API_URL MAIN_VITE_AUTH_URL RENDERER_VITE_EXTERNAL_RESOURCES_URL; do
+            value="${!key}"
+            test -n "$value" || { echo "::error::$key is empty"; exit 1; }
+            case "$value" in https://*) ;; *) echo "::error::$key must be HTTPS"; exit 1 ;; esac
+          done
+          echo "Configured the public Hydra API, auth service and external resources."
+          # Verify the downloadable renderer resources are reachable; the
+          # service may return 403/404 from a CI IP, so warn rather than block.
+          response=$(curl --location --silent --show-error --max-time 25 --output /dev/null --write-out '%{http_code}' "$RENDERER_VITE_EXTERNAL_RESOURCES_URL/bundle.js" || true)
+          echo "External renderer bundle HTTP status: $response"
       - name: Build and validate the Rust/libtorrent native addon
         working-directory: hydra
         shell: bash
