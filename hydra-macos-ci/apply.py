@@ -146,6 +146,21 @@ patch("src/renderer/src/pages/game-details/modals/game-options-modal/compatibili
     <>
       <div className="game-options-modal__wine-prefix">''')
 ])
+# Use electron-builder's native ad-hoc signing path instead of Hydra's
+# custom hook, which skips signing without a Developer ID certificate.
+# This is only for the experimental unsigned/not-notarized build.
+patch("electron-builder.yml", [
+    ('mac:\\n  sign: scripts/legendary-mac-sign.cjs\\n',
+     'mac:\\n  identity: "-"\\n'),
+])
+# Hardened runtime on Apple Silicon needs this entitlement for Electron's
+# embedded frameworks with Apple Team IDs.
+patch("build/entitlements.mac.plist", [
+    ('    <key>com.apple.security.cs.allow-jit</key>',
+     '    <key>com.apple.security.cs.disable-library-validation</key>\\n'
+     '    <true/>\\n'
+     '    <key>com.apple.security.cs.allow-jit</key>'),
+])
 # Fail closed: verify all upstream anchors before writing files.
 for p, data in changes.items():
     p.write_text(data, encoding="utf8")
