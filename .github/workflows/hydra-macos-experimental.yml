@@ -78,8 +78,12 @@ jobs:
       - name: Package unsigned Apple Silicon DMG
         working-directory: hydra
         shell: bash
+        env:
+          NODE_OPTIONS: "--max-old-space-size=4096"
         run: |
           set -o pipefail
+          echo "Vite renderer: Node heap limit 4096 MB"
+          node -e 'console.log("Node heap limit (MB):", Math.round(require("node:v8").getHeapStatistics().heap_size_limit / 1024 / 1024))'
           ./node_modules/.bin/electron-vite build 2>&1 | tee -a ../hydra-build.log
           ./node_modules/.bin/electron-builder --mac --arm64 --publish never 2>&1 | tee -a ../hydra-build.log
       - name: Upload DMG, app archive and diagnostic logs
