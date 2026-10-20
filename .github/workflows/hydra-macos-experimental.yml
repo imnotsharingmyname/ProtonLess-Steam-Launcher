@@ -1,0 +1,96 @@
+name: Hydra macOS experimental build
+
+on:
+  push:
+    branches: [hydra-macos-ci-experiment]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hydra-macos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hydra-arm64:
+    runs-on: macos-15
+    timeout-minutes: 240
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      HYDRA_TORRENT_BRIDGE_FROM_SOURCE: "1"
+      CARGO_PROFILE_RELEASE_STRIP: "none"
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
+      MAIN_VITE_API_URL: ${{ vars.MAIN_VITE_API_URL }}
+      MAIN_VITE_AUTH_URL: ${{ vars.MAIN_VITE_AUTH_URL }}
+      MAIN_VITE_CHECKOUT_URL: ${{ vars.MAIN_VITE_CHECKOUT_URL }}
+      MAIN_VITE_NIMBUS_API_URL: ${{ vars.MAIN_VITE_NIMBUS_API_URL }}
+      RENDERER_VITE_EXTERNAL_RESOURCES_URL: ${{ vars.EXTERNAL_RESOURCES_URL }}
+      MAIN_VITE_EXTERNAL_RESOURCES_URL: ${{ vars.EXTERNAL_RESOURCES_URL }}
+    steps:
+      - name: Checkout builder branch
+        uses: actions/checkout@v4
+      - name: Clone the upstream Hydra source
+        run: git clone --depth 1 https://github.com/hydralauncher/hydra.git hydra
+      - name: Install experimental macOS integration before building
+        run: python3 hydra-macos-ci/apply.py hydra
+      - name: Ensure native Apple Silicon
+        run: |
+          test "$(uname -s)" = Darwin
+          test "$(uname -m)" = arm64
+          sw_vers
+          xcodebuild -version
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.21.0
+      - name: Install Yarn Classic
+        run: |
+          npm install -g yarn@1.22.22
+          yarn --version
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install native source compilation tools
+        run: brew install cmake ninja pkg-config autoconf automake libtool
+      - name: Build and validate the Rust/libtorrent native addon
+        working-directory: hydra
+        shell: bash
+        run: |
+          set -o pipefail
+          yarn --frozen-lockfile 2>&1 | tee ../hydra-build.log
+      - name: Check Mach-O LINKEDIT alignment
+        working-directory: hydra
+        shell: bash
+        run: |
+          set -euo pipefail
+          otool -l hydra-native/hydra-native.node | awk '
+            /cmd LC_SYMTAB/ { sym=1; next }
+            sym && /stroff/ { offset=$2; print "Mach-O string table offset:",offset;
+              if (offset % 8) { print "LINKEDIT MISALIGNED"; exit 1 }
+              print "LINKEDIT aligned"; exit 0
+            }'
+      - name: Validate TypeScript
+        working-directory: hydra
+        shell: bash
+        run: |
+          set -o pipefail
+          yarn typecheck 2>&1 | tee -a ../hydra-build.log
+      - name: Package unsigned Apple Silicon DMG
+        working-directory: hydra
+        shell: bash
+        run: |
+          set -o pipefail
+          ./node_modules/.bin/electron-vite build 2>&1 | tee -a ../hydra-build.log
+          ./node_modules/.bin/electron-builder --mac --arm64 --publish never 2>&1 | tee -a ../hydra-build.log
+      - name: Upload DMG, app archive and diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Hydra-macOS-ARM64-experimental
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            hydra/dist/*.dmg
+            hydra/dist/*.zip
+            hydra/dist/*.yml
+            hydra-build.log
