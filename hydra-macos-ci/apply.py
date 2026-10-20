@@ -146,15 +146,30 @@ patch("src/renderer/src/pages/game-details/modals/game-options-modal/compatibili
     <>
       <div className="game-options-modal__wine-prefix">''')
 ])
-# Use electron-builder's native ad-hoc signing path instead of Hydra's
-# custom hook, which skips signing without a Developer ID certificate.
-# This is only for the experimental unsigned/not-notarized build.
-patch("electron-builder.yml", [
-    ('mac:\n  sign: scripts/legendary-mac-sign.cjs\n',
-     'mac:\n  identity: "-"\n'),
+# Keep upstream's custom macOS sign hook and ad-hoc sign without a
+# Developer ID. This permits local verification but does NOT notarize the app.
+patch("scripts/legendary-mac-sign.cjs", [
+    ('const path = require("node:path");',
+     'const path = require("node:path");\n'
+     'const { execFileSync } = require("node:child_process");'),
+    ('''    return;
+  }
+  // Delegate to the same signer''',
+     '''    // Sign embedded frameworks and native helpers with an ad-hoc identity.
+    execFileSync("/usr/bin/codesign", [
+      "--force", "--deep", "--sign", "-", "--timestamp=none",
+      "--entitlements",
+      path.join(packager.projectDir, "build", "entitlements.mac.plist"),
+      options.app,
+    ], { stdio: "inherit" });
+    execFileSync("/usr/bin/codesign", [
+      "--verify", "--deep", "--verbose=2", options.app,
+    ], { stdio: "inherit" });
+    return;
+  }
+  // Delegate to the same signer'''),
 ])
-# Hardened runtime on Apple Silicon needs this entitlement for Electron's
-# embedded frameworks with Apple Team IDs.
+# Allow Electron native modules and its embedded libraries to load.
 patch("build/entitlements.mac.plist", [
     ('    <key>com.apple.security.cs.allow-jit</key>',
      '    <key>com.apple.security.cs.disable-library-validation</key>\n'
