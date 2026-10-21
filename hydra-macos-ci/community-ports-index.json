@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "name": "Hydra Community PC Ports",
+  "description": "Community project links only. No game binaries, ROMs or proprietary assets.",
+  "entries": [
+    {
+      "title": "Ship of Harkinian",
+      "projectUrl": "https://github.com/HarbourMasters/Shipwright",
+      "description": "Community PC port of Ocarina of Time; follow the project's instructions and supply your own assets.",
+      "platforms": [
+        "Desktop",
+        "Nintendo 64"
+      ]
+    },
+    {
+      "title": "Starship",
+      "projectUrl": "https://github.com/HarbourMasters/Starship",
+      "description": "Community Star Fox 64 desktop port project.",
+      "platforms": [
+        "Desktop",
+        "Nintendo 64"
+      ]
+    },
+    {
+      "title": "Super Mario 64 — sm64ex",
+      "projectUrl": "https://github.com/sm64pc/sm64ex",
+      "description": "Community native desktop port project; requires original game assets.",
+      "platforms": [
+        "Desktop",
+        "Nintendo 64"
+      ]
+    },
+    {
+      "title": "OpenGOAL",
+      "projectUrl": "https://github.com/open-goal/jak-project",
+      "description": "Open-source Jak and Daxter reverse-engineering and desktop runtime project.",
+      "platforms": [
+        "Desktop",
+        "PlayStation 2"
+      ]
+    },
+    {
+      "title": "Sonic 1 & 2 (2013) — RSDKv4",
+      "projectUrl": "https://github.com/RSDKModding/RSDKv4-Decompilation",
+      "description": "Reverse-engineered Retro Engine v4 for Sonic 1 and Sonic 2 (2013).",
+      "platforms": [
+        "Desktop"
+      ]
+    },
+    {
+      "title": "Retro Engine v5 — RSDKv5",
+      "projectUrl": "https://github.com/RSDKModding/RSDKv5-Decompilation",
+      "description": "Retro Engine v5 decompilation used by community game port projects.",
+      "platforms": [
+        "Desktop"
+      ]
+    },
+    {
+      "title": "dhewm3",
+      "projectUrl": "https://github.com/dhewm/dhewm3",
+      "description": "Modern Doom 3 source port for desktop systems.",
+      "platforms": [
+        "Desktop"
+      ]
+    },
+    {
+      "title": "Zelda 3 — A Link to the Past",
+      "projectUrl": "https://github.com/snesrev/zelda3",
+      "description": "Reverse-engineered engine and PC port project for A Link to the Past.",
+      "platforms": [
+        "Desktop",
+        "SNES"
+      ]
+    },
+    {
+      "title": "Zelda 64: Recompiled",
+      "projectUrl": "https://github.com/Zelda64Recomp/Zelda64Recomp",
+      "description": "Static recompilation project bringing Majora's Mask to desktop platforms.",
+      "platforms": [
+        "Desktop",
+        "Nintendo 64"
+      ]
+    }
+  ]
+}
