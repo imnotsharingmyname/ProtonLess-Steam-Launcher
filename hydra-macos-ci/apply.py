@@ -206,7 +206,17 @@ patch("src/renderer/src/components/sidebar/routes.tsx", [
 ])
 patch("src/renderer/src/components/sidebar/sidebar.tsx", [
     ('<span>{t(nameKey)}</span>',
-     '<span>{nameKey === "community_ports" ? "PC Ports" : t(nameKey)}</span>'),
+     '<span>{nameKey === "community_ports" ? "Console Ports" : t(nameKey)}</span>'),
+])
+# Read-only metadata adapter for public repack listing RSS.
+patch("src/main/events/index.ts", [
+    ('import "./epic";',
+     'import "./epic";\nimport "./console-ports-rss";'),
+])
+patch("src/preload/index.ts", [
+    ('  openExternal: (src: string) => ipcRenderer.invoke("openExternal", src),',
+     '  openExternal: (src: string) => ipcRenderer.invoke("openExternal", src),\n'
+     '  fetchConsolePortsRss: () => ipcRenderer.invoke("getConsolePortsRss"),'),
 ])
 # Fail closed: verify all upstream anchors before writing files.
 for p, data in changes.items():
@@ -217,6 +227,9 @@ shutil.copyfile(here / "mac-game-launcher.ts", target)
 print("installed", target.relative_to(root))
 ports_dir = root / "src/renderer/src/pages/community-ports"
 ports_dir.mkdir(parents=True, exist_ok=True)
+rss_target = root / "src/main/events/console-ports-rss.ts"
+shutil.copyfile(here / "console-ports-rss.ts", rss_target)
+print("installed", rss_target.relative_to(root))
 for name in ("community-ports.tsx", "community-ports.scss"):
     shutil.copyfile(here / name, ports_dir / name)
     print("installed", (ports_dir / name).relative_to(root))
