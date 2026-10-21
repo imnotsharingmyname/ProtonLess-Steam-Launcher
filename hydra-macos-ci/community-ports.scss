@@ -50,3 +50,9 @@
   .community-ports__search input { flex-basis: 100%; }
   .community-ports__grid { grid-template-columns: 1fr; }
 }
+
+.community-ports__release { padding: 10px; border: 1px solid #4a425b; border-radius: 9px; background: #292432; }
+.community-ports__release > small { color: #c5b4da; display: block; margin-bottom: 4px; }
+.community-ports__release > strong { display: block; font-size: 12px; margin-bottom: 8px; }
+.community-ports__release-links { display: flex; flex-wrap: wrap; gap: 6px; }
+.community-ports__release-links button { text-align: left; font-size: 11px; padding: 7px 9px; max-width: 100%; overflow-wrap: anywhere; background: #40334f; border-color: #655778; }
