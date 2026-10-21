@@ -12,6 +12,10 @@ type Port = {
 type Feed = { name: string; url: string };
 type Saved = { feeds: Feed[]; custom: Port[] };
 const KEY = "hydra-community-ports-v1";
+const DEFAULT_FEED: Feed = {
+  name: "Hydra Community PC Ports",
+  url: "https://raw.githubusercontent.com/imnotsharingmyname/ProtonLess-Steam-Launcher/hydra-macos-ci-experiment/hydra-macos-ci/community-ports-index.json",
+};
 
 const featured: Port[] = [
   {
@@ -65,7 +69,9 @@ function parsePort(input: unknown, source: string): Port | null {
 
 function loadSaved(): Saved {
   try {
-    const raw = JSON.parse(localStorage.getItem(KEY) || "{}") as Record<string, unknown>;
+    const existing = localStorage.getItem(KEY);
+    if (!existing) return { feeds: [DEFAULT_FEED], custom: [] };
+    const raw = JSON.parse(existing) as Record<string, unknown>;
     const feeds = Array.isArray(raw.feeds)
       ? raw.feeds.filter((f): f is Feed => !!f && typeof f === "object" &&
           typeof f.name === "string" && f.name.length < 100 && validHttps(f.url)).slice(0, 20)
