@@ -3,6 +3,9 @@ name: Hydra macOS experimental build
 on:
   push:
     branches: [hydra-macos-ci-experiment]
+    paths-ignore:
+      - "hydra-macos-ci/community-ports-index.json"
+      - "hydra-macos-ci/README*.md"
   workflow_dispatch:
 
 permissions:
@@ -34,6 +37,14 @@ jobs:
         run: git clone --depth 1 https://github.com/hydralauncher/hydra.git hydra
       - name: Install experimental macOS integration before building
         run: python3 hydra-macos-ci/apply.py hydra
+      - name: Validate Console Ports integration
+        run: |
+          set -euo pipefail
+          grep -F 'Console Ports' hydra/src/renderer/src/components/sidebar/sidebar.tsx
+          grep -F '/community-ports' hydra/src/renderer/src/components/sidebar/routes.tsx
+          grep -F 'fetchConsolePortsRss' hydra/src/preload/index.ts
+          test -s hydra/src/main/events/console-ports-rss.ts
+          test -s hydra/src/renderer/src/pages/community-ports/community-ports.tsx
       - name: Ensure native Apple Silicon
         run: |
           test "$(uname -s)" = Darwin
@@ -104,7 +115,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Hydra-macOS-ARM64-experimental
+          name: Hydra-macOS-Console-Ports-${{ github.run_number }}
           retention-days: 7
           if-no-files-found: warn
           path: |
