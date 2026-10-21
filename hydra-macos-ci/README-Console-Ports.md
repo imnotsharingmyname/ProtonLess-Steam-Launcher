@@ -36,3 +36,20 @@ The workflow installs the overlay before compiling, checks that the Console Port
 Install from the **new run's artifact**, not an older `Hydra-macOS-ARM64-experimental` ZIP. Exit Hydra before overwriting the application bundle in `/Applications`; keep the last working build until the new one launches successfully.
 
 The working experiment remains on branch `hydra-macos-ci-experiment`; the `main` branch is unchanged. The app is ad-hoc signed for local testing, not Apple-notarized.
+
+## Console Ports interface (new)
+
+The page now uses Hydra's own Sass dark colors (`#121212` background and `#0d0d0d` controls), a constrained responsive grid, and a properly column-oriented flex layout. This fixes the old sideways-scrolling and oversized card issue.
+
+Two tabs partition entries without changing their underlying source:
+- **Console Ports · GitHub**: GitHub repositories, latest releases and linked assets.
+- **Console Ports · FitGirl & Other Sources**: repack article listings and user-added non-GitHub listings.
+
+### Import a listing and download
+
+In the second tab:
+1. Paste a third-party `https://…` **game page URL** and choose **Add game listing**. The game then becomes searchable in the local Console Ports catalogue.
+2. To actually download **using Hydra**, enter a title and a **supported download URI**, e.g. a magnet URI or a hoster URL recognized by upstream Hydra's `getDownloadersForUri`, then choose **Download with Hydra**.
+3. The feature uses the real `window.electron.startGameDownload` event, with `shop: "custom"`, a unique object ID, the user's configured download directory, and automatic extraction disabled. On success, it opens **Downloads**.
+
+**A web article URL (including `https://fitgirl-repacks.site/bloodborne/`) is not a playable archive or torrent and cannot by itself start a Hydra transfer.** We deliberately do not claim that Hydra can ingest arbitrary page URLs or scrape restricted mirrors. A compatible direct URI must be provided separately. Source permission/ownership remains the user's responsibility.
