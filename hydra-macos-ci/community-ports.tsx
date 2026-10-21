@@ -8,12 +8,21 @@ type Port = {
   description: string;
   platforms: string[];
   source: string;
+  origin?: string;
+  buildType?: string;
 };
+type ReleaseInfo = {
+  name: string;
+  url: string;
+  publishedAt?: string;
+  assets: { name: string; url: string; size?: number }[];
+};
+
 type Feed = { name: string; url: string };
 type Saved = { feeds: Feed[]; custom: Port[] };
 const KEY = "hydra-community-ports-v1";
 const DEFAULT_FEED: Feed = {
-  name: "Hydra Community PC Ports",
+  name: "Console Ports Index",
   url: "https://raw.githubusercontent.com/imnotsharingmyname/ProtonLess-Steam-Launcher/hydra-macos-ci-experiment/hydra-macos-ci/community-ports-index.json",
 };
 
@@ -64,6 +73,8 @@ function parsePort(input: unknown, source: string): Port | null {
       ? p.platforms.filter((x): x is string => typeof x === "string" && x.length < 40).slice(0, 8)
       : [],
     source,
+    origin: typeof p.origin === "string" ? p.origin.slice(0, 60) : undefined,
+    buildType: typeof p.buildType === "string" ? p.buildType.slice(0, 80) : undefined,
   };
 }
 
@@ -108,9 +119,77 @@ async function fetchFeed(feed: Feed): Promise<Port[]> {
   }
 }
 
+/** RSS reader: only indexes public article titles/URLs, never downloads. */
+function parseConsoleRss(xml: string): Port[] {
+  const parsed = new DOMParser().parseFromString(xml, "application/xml");
+  if (parsed.querySelector("parsererror")) throw new Error("Invalid source RSS XML");
+  return Array.from(parsed.querySelectorAll("item")).slice(0, 100).flatMap((item) => {
+    const title = item.querySelector("title")?.textContent?.trim() || "";
+    const link = item.querySelector("link")?.textContent?.trim() || "";
+    const description = item.querySelector("description")?.textContent || "";
+    const searchable = title + " " + description.slice(0, 500);
+    // This source contains ordinary PC games too: show ONLY the port-specific
+    // postings, not the site's entire game catalogue.
+    if (!/\b(?:bloodborne|console[\s-]*to[\s-]*pc|pc port|ps[345] port|xbox port|playstation port|shadps4)\b/i.test(searchable)) {
+      return [];
+    }
+    if (!validHttps(link) || new URL(link).hostname !== "fitgirl-repacks.site") return [];
+    const p = parsePort({
+      title,
+      projectUrl: link,
+      description: "Full-build listing on the source site. Check the original article for details and legitimacy.",
+      platforms: ["Windows", "Port listing"],
+      origin: "Console / other platforms",
+      buildType: "Complete-build listing",
+    }, "FitGirl RSS · listing metadata");
+    return p ? [p] : [];
+  });
+}
+
+/** GitHub project release information is independent of Hydra's Steam IDs. */
+function githubProject(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname !== "github.com") return null;
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    if (parts.length !== 2 || !parts.every((p) => /^[\w.-]+$/.test(p))) return null;
+    return parts.join("/");
+  } catch {
+    return null;
+  }
+}
+
+async function getLatestRelease(repo: string): Promise<ReleaseInfo | null> {
+  const response = await fetch("https://api.github.com/repos/" + repo + "/releases/latest", {
+    headers: { Accept: "application/vnd.github+json" },
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error("GitHub HTTP " + response.status);
+  const data = await response.json() as {
+    name?: string; tag_name?: string; html_url?: string; published_at?: string;
+    assets?: { name: string; browser_download_url: string; size?: number }[];
+  };
+  if (!validHttps(data.html_url) || !data.html_url.startsWith("https://github.com/")) return null;
+  const assets = (data.assets ?? [])
+    .filter((a) => validHttps(a.browser_download_url) &&
+      a.browser_download_url.startsWith("https://github.com/") &&
+      /\.(zip|dmg|pkg|exe|appimage|tar\.gz|tar\.xz|7z|msi)$/i.test(a.name))
+    .slice(0, 12)
+    .map((a) => ({ name: a.name, url: a.browser_download_url, size: a.size }));
+  return {
+    name: data.name || data.tag_name || "Latest release",
+    url: data.html_url,
+    publishedAt: data.published_at,
+    assets,
+  };
+}
+
 export default function CommunityPorts() {
   const [saved, setSaved] = useState<Saved>(loadSaved);
   const [feedEntries, setFeedEntries] = useState<Port[]>([]);
+  const [githubReleases, setGithubReleases] = useState<Record<string, ReleaseInfo>>({});
+  const [rssEntries, setRssEntries] = useState<Port[]>([]);
+  const [rssStatus, setRssStatus] = useState("Not checked");
   const [query, setQuery] = useState("");
   const [platform, setPlatform] = useState("All");
   const [feedName, setFeedName] = useState("");
@@ -127,34 +206,68 @@ export default function CommunityPorts() {
   }, [saved]);
 
   const refresh = useCallback(async () => {
-    if (saved.feeds.length === 0) {
-      setFeedEntries([]);
-      return;
-    }
     setLoading(true);
-    const results = await Promise.allSettled(saved.feeds.map(fetchFeed));
+    const rssApi = window.electron as typeof window.electron & { fetchConsolePortsRss: () => Promise<string> };
+    const results = await Promise.allSettled([
+      ...saved.feeds.map(fetchFeed),
+      rssApi.fetchConsolePortsRss().then(parseConsoleRss),
+    ]);
     const loaded: Port[] = [];
     const errors: string[] = [];
-    results.forEach((result, i) => {
+    results.slice(0, -1).forEach((result, i) => {
       if (result.status === "fulfilled") loaded.push(...result.value);
       else errors.push(saved.feeds[i].name + ": " + String(result.reason));
     });
+    const rss = results[results.length - 1];
+    if (rss.status === "fulfilled") {
+      setRssEntries(rss.value);
+      setRssStatus("Checked · " + rss.value.length + " console port listings found");
+    } else {
+      setRssEntries([]);
+      setRssStatus("Temporarily unavailable · " + String(rss.reason));
+    }
     setFeedEntries(loaded);
     setMessage(errors.length
-      ? "Some indexes failed: " + errors.join("; ") + ". HTTPS indexes must allow browser CORS."
-      : "Refreshed " + loaded.length + " community entries.");
+      ? "Some community indexes failed: " + errors.join("; ")
+      : "Refreshed " + loaded.length + " community index entries.");
     setLoading(false);
   }, [saved.feeds]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  // Automatically refresh while Hydra is running. A closed app cannot refresh.
+  useEffect(() => {
+    void refresh();
+    const timer = setInterval(() => { void refresh(); }, 6 * 60 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [refresh]);
 
   const ports = useMemo(() => {
     const unique = new Map<string, Port>();
-    [...saved.custom, ...feedEntries, ...featured].forEach((p) => {
+    [...saved.custom, ...rssEntries, ...feedEntries, ...featured].forEach((p) => {
       if (!unique.has(p.projectUrl)) unique.set(p.projectUrl, p);
     });
     return Array.from(unique.values());
-  }, [saved.custom, feedEntries]);
+  }, [saved.custom, feedEntries, rssEntries]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const repos = Array.from(new Set(ports.map((p) => githubProject(p.projectUrl))
+      .filter((repo): repo is string => repo !== null))).slice(0, 30);
+    // API limit applies to unauthenticated GitHub users. Refresh on page opening
+    // and whenever the configured catalogue changes, not every render.
+    void Promise.allSettled(repos.map(async (repo) => ({
+      repo, release: await getLatestRelease(repo),
+    }))).then((results) => {
+      if (cancelled) return;
+      const next: Record<string, ReleaseInfo> = {};
+      results.forEach((result) => {
+        if (result.status === "fulfilled" && result.value.release) {
+          next[result.value.repo] = result.value.release;
+        }
+      });
+      setGithubReleases(next);
+    });
+    return () => { cancelled = true; };
+  }, [ports]);
 
   const platforms = useMemo(() => ["All", ...Array.from(
     new Set(ports.flatMap((p) => p.platforms))
@@ -198,8 +311,9 @@ export default function CommunityPorts() {
     <main className="community-ports">
       <div className="community-ports__intro">
         <p className="community-ports__eyebrow">COMMUNITY DISCOVERY</p>
-        <h1>Unofficial PC Ports</h1>
-        <p>Discover community desktop port projects without leaving Hydra. This is a separate index, not Hydra's official game catalogue or download-source system.</p>
+        <h1>Console Ports</h1>
+        <p>Discover games and projects coming to PC from PlayStation, Xbox, Nintendo and other platforms. Search public port releases, separate community indexes, and full-build listings without relying on Steam catalogue IDs.</p>
+        <p><strong>Live sources:</strong> Console Ports Index · GitHub releases · FitGirl article feed (listing metadata only)</p>
       </div>
       <div className="community-ports__search">
         <input aria-label="Search ports" placeholder="Search ports, projects, platforms…" value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -214,10 +328,29 @@ export default function CommunityPorts() {
             <div className="community-ports__card-top"><strong>{p.title}</strong><small>{p.source}</small></div>
             <p>{p.description || "Visit the project's homepage for details."}</p>
             <div className="community-ports__tags">
+              {p.origin && <span>{p.origin}</span>}
+              {p.buildType && <span>{p.buildType}</span>}
               {p.platforms.map((tag) => <span key={tag}>{tag}</span>)}
             </div>
+            {githubProject(p.projectUrl) && githubReleases[githubProject(p.projectUrl)!] && (
+              <div className="community-ports__release">
+                <small>Latest GitHub release</small>
+                <strong>{githubReleases[githubProject(p.projectUrl)!].name}</strong>
+                <div className="community-ports__release-links">
+                  <button type="button" onClick={() => void window.electron.openExternal(githubReleases[githubProject(p.projectUrl)!].url)}>View release ↗</button>
+                  {githubReleases[githubProject(p.projectUrl)!].assets.slice(0, 3).map((asset) => (
+                    <button type="button" key={asset.url} title={asset.name}
+                      onClick={() => void window.electron.openExternal(asset.url)}>
+                      {asset.name.length > 27 ? asset.name.slice(0, 24) + "…" : asset.name} ↗
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="community-ports__actions">
-              <button type="button" onClick={() => void window.electron.openExternal(p.projectUrl)}>Project website ↗</button>
+              <button type="button" onClick={() => void window.electron.openExternal(p.projectUrl)}>
+                {p.buildType === "Complete-build listing" ? "View listing ↗" : "Project website ↗"}
+              </button>
               {p.source === "My entries" && <button type="button" className="community-ports__quiet"
                 onClick={() => setSaved((prev) => ({ ...prev, custom: prev.custom.filter((x) => x.projectUrl !== p.projectUrl) }))}>Remove</button>}
             </div>
@@ -227,8 +360,9 @@ export default function CommunityPorts() {
       </div>
       <div className="community-ports__management">
         <section>
-          <h2>Community JSON indexes</h2>
-          <p>Add an HTTPS JSON index, for example a raw GitHub-hosted file. Entries are fetched in Hydra and linked to their project websites.</p>
+          <h2>Console Ports sources</h2>
+          <p>The built-in index and GitHub release information refresh while Hydra is running (every six hours). Add more HTTPS JSON sources below. FitGirl RSS discovers public article listings, not installers or torrent links.</p>
+          <p>FitGirl feed: {rssStatus}</p>
           <form onSubmit={addFeed}>
             <input aria-label="Index name" placeholder="Index name" value={feedName} onChange={(e) => setFeedName(e.target.value)} />
             <input aria-label="Index HTTPS URL" placeholder="https://raw.githubusercontent.com/…/ports.json" value={feedUrl} onChange={(e) => setFeedUrl(e.target.value)} />
@@ -243,8 +377,8 @@ export default function CommunityPorts() {
           <button type="button" disabled={loading} onClick={() => void refresh()}>{loading ? "Refreshing…" : "Refresh indexes"}</button>
         </section>
         <section>
-          <h2>Add a project</h2>
-          <p>Save an unofficial port or source project locally. Only project links are opened; no game files are downloaded automatically.</p>
+          <h2>Add a game or port</h2>
+          <p>Save any non-Steam game or console-to-PC build listing locally. Links open the original publisher/project website; Hydra does not host or install game files from these entries.</p>
           <form onSubmit={addEntry}>
             <input aria-label="Project title" placeholder="Project name" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
             <input aria-label="Project HTTPS URL" placeholder="https://github.com/…" value={newUrl} onChange={(e) => setNewUrl(e.target.value)} />
@@ -255,7 +389,7 @@ export default function CommunityPorts() {
         </section>
       </div>
       {message && <p className="community-ports__message" role="status">{message}</p>}
-      <p className="community-ports__disclaimer">Projects are community-maintained and may require original game files. Check their licences and download software only from sources you trust.</p>
+      <p className="community-ports__disclaimer">Source type matters: a GitHub executable may be an engine/launcher only, while a full-build listing is an external article, not a verified working release. Use original game assets where required and verify the legitimacy of third-party downloads. Your normal Hydra catalogue and download sources are unchanged.</p>
     </main>
   );
 }
