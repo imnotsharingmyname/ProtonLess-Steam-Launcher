@@ -176,6 +176,38 @@ patch("build/entitlements.mac.plist", [
      '    <true/>\n'
      '    <key>com.apple.security.cs.allow-jit</key>'),
 ])
+# Add a separate, searchable community port catalogue.
+patch("src/renderer/src/main.tsx", [
+    ('import Catalogue from "./pages/catalogue/catalogue";',
+     'import Catalogue from "./pages/catalogue/catalogue";\n'
+     'import CommunityPorts from "./pages/community-ports/community-ports";'),
+    ('                  <Route path="/catalogue" element={<Catalogue />} />',
+     '                  <Route path="/catalogue" element={<Catalogue />} />\n'
+     '                  <Route path="/community-ports" element={<CommunityPorts />} />'),
+])
+patch("src/renderer/src/components/sidebar/routes.tsx", [
+    ('  AppsIcon,',
+     '  AppsIcon,\n  CodeIcon,'),
+    ('''  {
+    path: "/library",
+    nameKey: "library",
+    render: () => <BookIcon />,
+  },''',
+     '''  {
+    path: "/library",
+    nameKey: "library",
+    render: () => <BookIcon />,
+  },
+  {
+    path: "/community-ports",
+    nameKey: "community_ports",
+    render: () => <CodeIcon />,
+  },'''),
+])
+patch("src/renderer/src/components/sidebar/sidebar.tsx", [
+    ('<span>{t(nameKey)}</span>',
+     '<span>{nameKey === "community_ports" ? "PC Ports" : t(nameKey)}</span>'),
+])
 # Fail closed: verify all upstream anchors before writing files.
 for p, data in changes.items():
     p.write_text(data, encoding="utf8")
@@ -183,3 +215,8 @@ for p, data in changes.items():
 target = root / "src/main/helpers/mac-game-launcher.ts"
 shutil.copyfile(here / "mac-game-launcher.ts", target)
 print("installed", target.relative_to(root))
+ports_dir = root / "src/renderer/src/pages/community-ports"
+ports_dir.mkdir(parents=True, exist_ok=True)
+for name in ("community-ports.tsx", "community-ports.scss"):
+    shutil.copyfile(here / name, ports_dir / name)
+    print("installed", (ports_dir / name).relative_to(root))
