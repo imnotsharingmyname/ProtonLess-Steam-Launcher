@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Downloader, getDownloadersForUri } from "@shared";
 import "./community-ports.scss";
 
 /** A separate discovery index: it does not impersonate Hydra's Steam catalogue. */
@@ -200,6 +202,13 @@ export default function CommunityPorts() {
   const [newPlatforms, setNewPlatforms] = useState("Desktop");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<"github" | "sources">("github");
+  const [listingUrl, setListingUrl] = useState("");
+  const [downloadUri, setDownloadUri] = useState("");
+  const [downloadTitle, setDownloadTitle] = useState("");
+  const [startingDownload, setStartingDownload] = useState(false);
+  const importRef = useRef<HTMLElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     localStorage.setItem(KEY, JSON.stringify(saved));
@@ -281,6 +290,85 @@ export default function CommunityPorts() {
     ).sort((a, b) => a.title.localeCompare(b.title));
   }, [ports, platform, query]);
 
+  const visibleByTab = useMemo(() =>
+    visible.filter((p) =>
+      activeTab === "github" ? githubProject(p.projectUrl) !== null : githubProject(p.projectUrl) === null
+    ), [visible, activeTab]);
+
+  const importListing = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!validHttps(listingUrl)) {
+      setMessage("Enter an HTTPS page URL. Magnet links belong in the download field below.");
+      return;
+    }
+    const url = new URL(listingUrl);
+    const slug = decodeURIComponent(url.pathname.split("/").filter(Boolean).at(-1) ?? "Imported game")
+      .replace(/[-_]+/g, " ").trim();
+    const title = downloadTitle.trim() || slug || "Imported game";
+    const candidate = parsePort({
+      title,
+      projectUrl: url.href,
+      description: "Custom external full-build listing. The page itself is not a download.",
+      platforms: ["Windows", "External listing"],
+      buildType: "External listing",
+    }, "My entries");
+    if (!candidate) {
+      setMessage("Could not add the listing; check the title and HTTPS URL.");
+      return;
+    }
+    setSaved((prev) => ({
+      ...prev, custom: [candidate, ...prev.custom.filter((p) => p.projectUrl !== candidate.projectUrl)].slice(0, 300),
+    }));
+    setDownloadTitle(title);
+    setMessage("Listing saved. To download within Hydra, paste the actual magnet or a Hydra-supported file-host link below. The article URL alone cannot start a download.");
+  };
+
+  const startHydraDownload = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const uri = downloadUri.trim();
+    const downloaders = getDownloadersForUri(uri);
+    if (downloaders.length === 0) {
+      setMessage("Not a Hydra-supported download URI. A FitGirl article URL is a web page, not a download. Paste a magnet URI or a compatible file-host link from a source you are authorized to use.");
+      return;
+    }
+    if (!downloadTitle.trim()) {
+      setMessage("Enter a game title before starting its download.");
+      return;
+    }
+    const downloader = downloaders.includes(Downloader.Torrent)
+      ? Downloader.Torrent : downloaders[0];
+    setStartingDownload(true);
+    try {
+      const prefs = await window.electron.getUserPreferences();
+      const downloadPath = prefs?.downloadsPath || await window.electron.getDefaultDownloadsPath();
+      const response = await window.electron.startGameDownload({
+        objectId: crypto.randomUUID(),
+        title: downloadTitle.trim(),
+        shop: "custom",
+        uri,
+        downloadPath,
+        downloader,
+        automaticallyExtract: false,
+        automaticallyDeleteArchiveFiles: false,
+      });
+      if (!response.ok) throw new Error(response.error || "Hydra could not start the download");
+      setMessage("Download started using Hydra. See Downloads for progress.");
+      navigate("/downloads");
+    } catch (error) {
+      setMessage("Download failed: " + String(error));
+    } finally {
+      setStartingDownload(false);
+    }
+  };
+
+  const useListing = (port: Port) => {
+    setActiveTab("sources");
+    setListingUrl(port.projectUrl);
+    setDownloadTitle(port.title);
+    setMessage("Listing selected. Paste a compatible download URI to use Hydra's download manager.");
+    importRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const addFeed = (event: React.FormEvent) => {
     event.preventDefault();
     if (!validHttps(feedUrl)) { setMessage("Index URL must be a valid HTTPS address."); return; }
@@ -315,15 +403,27 @@ export default function CommunityPorts() {
         <p>Discover games and projects coming to PC from PlayStation, Xbox, Nintendo and other platforms. Search public port releases, separate community indexes, and full-build listings without relying on Steam catalogue IDs.</p>
         <p><strong>Live sources:</strong> Console Ports Index · GitHub releases · FitGirl article feed (listing metadata only)</p>
       </div>
+      <div className="community-ports__tabs" role="tablist" aria-label="Port source">
+        <button type="button" role="tab" aria-selected={activeTab === "github"}
+          className={activeTab === "github" ? "community-ports__tab--active" : ""}
+          onClick={() => { setActiveTab("github"); setPlatform("All"); }}>
+          Console Ports · GitHub
+        </button>
+        <button type="button" role="tab" aria-selected={activeTab === "sources"}
+          className={activeTab === "sources" ? "community-ports__tab--active" : ""}
+          onClick={() => { setActiveTab("sources"); setPlatform("All"); }}>
+          Console Ports · FitGirl & Other Sources
+        </button>
+      </div>
       <div className="community-ports__search">
         <input aria-label="Search ports" placeholder="Search ports, projects, platforms…" value={query} onChange={(e) => setQuery(e.target.value)} />
         <select aria-label="Platform" value={platform} onChange={(e) => setPlatform(e.target.value)}>
           {platforms.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
-        <span>{visible.length} projects</span>
+        <span>{visibleByTab.length} {activeTab === "github" ? "GitHub projects" : "source listings"}</span>
       </div>
       <div className="community-ports__grid">
-        {visible.map((p) => (
+        {visibleByTab.map((p) => (
           <article className="community-ports__card" key={p.projectUrl}>
             <div className="community-ports__card-top"><strong>{p.title}</strong><small>{p.source}</small></div>
             <p>{p.description || "Visit the project's homepage for details."}</p>
@@ -349,15 +449,45 @@ export default function CommunityPorts() {
             )}
             <div className="community-ports__actions">
               <button type="button" onClick={() => void window.electron.openExternal(p.projectUrl)}>
-                {p.buildType === "Complete-build listing" ? "View listing ↗" : "Project website ↗"}
+                {p.buildType === "Complete-build listing" || p.buildType === "External listing" ? "Open listing ↗" : "Project website ↗"}
               </button>
+              {activeTab === "sources" && (
+                <button type="button" className="community-ports__quiet" onClick={() => useListing(p)}>Use listing</button>
+              )}
               {p.source === "My entries" && <button type="button" className="community-ports__quiet"
                 onClick={() => setSaved((prev) => ({ ...prev, custom: prev.custom.filter((x) => x.projectUrl !== p.projectUrl) }))}>Remove</button>}
             </div>
           </article>
         ))}
-        {visible.length === 0 && <p>No matching projects. Try a different search or add an index.</p>}
+        {visibleByTab.length === 0 && <p>No matching entries in this source. Try a different search, switch source, or add an index below.</p>}
       </div>
+      {activeTab === "sources" && (
+        <section ref={importRef} className="community-ports__import">
+          <h2>Add a FitGirl or other game listing</h2>
+          <p>Paste the game page link to save it to this catalogue, even if the game is missing from Steam. You can then use Hydra's downloader with a supported download URI.</p>
+          <form onSubmit={importListing}>
+            <label htmlFor="console-ports-listing">Game page URL</label>
+            <input id="console-ports-listing" value={listingUrl}
+              onChange={(e) => setListingUrl(e.target.value)}
+              placeholder="https://fitgirl-repacks.site/example-game/" />
+            <label htmlFor="console-ports-title">Game title</label>
+            <input id="console-ports-title" value={downloadTitle}
+              onChange={(e) => setDownloadTitle(e.target.value)}
+              placeholder="Bloodborne — PC Port" />
+            <button type="submit">Add game listing</button>
+          </form>
+          <form onSubmit={(event) => void startHydraDownload(event)}>
+            <label htmlFor="console-ports-download">Download URI (separate from the page link)</label>
+            <input id="console-ports-download" value={downloadUri}
+              onChange={(e) => setDownloadUri(e.target.value)}
+              placeholder="magnet:?xt=... or Hydra-supported file-host URL" />
+            <button type="submit" disabled={startingDownload}>
+              {startingDownload ? "Starting download…" : "Download with Hydra"}
+            </button>
+          </form>
+          <p className="community-ports__hint">Hydra supports magnet URIs and specific file hosts, not arbitrary web pages. This button uses Hydra's actual download manager and does not scrape or bypass third-party download sites.</p>
+        </section>
+      )}
       <div className="community-ports__management">
         <section>
           <h2>Console Ports sources</h2>
