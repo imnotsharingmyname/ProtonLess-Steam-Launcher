@@ -1,85 +1,140 @@
 {
-  "version": 1,
-  "name": "Hydra Community PC Ports",
-  "description": "Community project links only. No game binaries, ROMs or proprietary assets.",
+  "version": 2,
+  "name": "Hydra Console Ports Source",
+  "description": "Independent discovery feed for console-to-PC projects and public listing metadata; GitHub release assets are resolved live in the Hydra app. No copyrighted game binaries are mirrored.",
+  "updatedAt": "2026-10-21",
   "entries": [
     {
-      "title": "Ship of Harkinian",
-      "projectUrl": "https://github.com/HarbourMasters/Shipwright",
-      "description": "Community PC port of Ocarina of Time; follow the project's instructions and supply your own assets.",
+      "title": "Bloodborne — PC build listing",
+      "projectUrl": "https://fitgirl-repacks.site/bloodborne/",
+      "description": "Community full-build listing for the unofficial Bloodborne PC experience. External listing; this index does not host or verify installers.",
       "platforms": [
-        "Desktop",
-        "Nintendo 64"
-      ]
+        "Windows",
+        "PlayStation 4"
+      ],
+      "origin": "PlayStation 4",
+      "buildType": "Complete-build listing"
     },
     {
-      "title": "Starship",
-      "projectUrl": "https://github.com/HarbourMasters/Starship",
-      "description": "Community Star Fox 64 desktop port project.",
+      "title": "Bloodborne — Native Windows Port",
+      "projectUrl": "https://github.com/Mrsuss60/bloodborne_pc_windows_port",
+      "description": "Experimental Windows native CPU loader and Vulkan renderer. Requires a compatible Bloodborne dump; check the project README and release status.",
       "platforms": [
-        "Desktop",
+        "Windows",
+        "PlayStation 4"
+      ],
+      "origin": "PlayStation 4",
+      "buildType": "Experimental engine / runtime"
+    },
+    {
+      "title": "Bloodborne — bbhost",
+      "projectUrl": "https://github.com/droogie/bbhost",
+      "description": "Independent Bloodborne desktop research/runtime project. Check developer instructions and available releases; original assets may be required.",
+      "platforms": [
+        "Windows",
+        "PlayStation 4"
+      ],
+      "origin": "PlayStation 4",
+      "buildType": "Experimental runtime"
+    },
+    {
+      "title": "King Kong — Recompiled",
+      "projectUrl": "https://github.com/TekRantGaming/king-kong-recompiled",
+      "description": "Community native PC recompilation project for Peter Jackson's King Kong from Xbox 360.",
+      "platforms": [
+        "Windows",
+        "Xbox 360"
+      ],
+      "origin": "Xbox 360",
+      "buildType": "Native recompilation"
+    },
+    {
+      "title": "Ship of Harkinian — Ocarina of Time",
+      "projectUrl": "https://github.com/HarbourMasters/Shipwright",
+      "description": "Native PC port project with official GitHub releases. Requires legally acquired original game assets.",
+      "platforms": [
+        "Windows",
+        "macOS",
         "Nintendo 64"
-      ]
+      ],
+      "origin": "Nintendo 64",
+      "buildType": "Engine / launcher release"
+    },
+    {
+      "title": "Starship — Star Fox 64",
+      "projectUrl": "https://github.com/HarbourMasters/Starship",
+      "description": "Community Star Fox 64 native desktop port. Releases require the user's own original assets.",
+      "platforms": [
+        "Windows",
+        "Nintendo 64"
+      ],
+      "origin": "Nintendo 64",
+      "buildType": "Engine / launcher release"
     },
     {
       "title": "Super Mario 64 — sm64ex",
       "projectUrl": "https://github.com/sm64pc/sm64ex",
-      "description": "Community native desktop port project; requires original game assets.",
+      "description": "Community Super Mario 64 native desktop port. Project instructions explain how to build with legally obtained original assets.",
       "platforms": [
         "Desktop",
         "Nintendo 64"
-      ]
+      ],
+      "origin": "Nintendo 64",
+      "buildType": "Source-based port"
     },
     {
-      "title": "OpenGOAL",
+      "title": "OpenGOAL — Jak & Daxter",
       "projectUrl": "https://github.com/open-goal/jak-project",
-      "description": "Open-source Jak and Daxter reverse-engineering and desktop runtime project.",
+      "description": "Open-source Jak and Daxter runtime and launcher project.",
       "platforms": [
-        "Desktop",
+        "Windows",
         "PlayStation 2"
-      ]
+      ],
+      "origin": "PlayStation 2",
+      "buildType": "Engine / launcher release"
     },
     {
       "title": "Sonic 1 & 2 (2013) — RSDKv4",
       "projectUrl": "https://github.com/RSDKModding/RSDKv4-Decompilation",
-      "description": "Reverse-engineered Retro Engine v4 for Sonic 1 and Sonic 2 (2013).",
+      "description": "Community decompilation of Retro Engine v4 for the Sonic 1 & 2 remasters.",
       "platforms": [
         "Desktop"
-      ]
+      ],
+      "origin": "Other platforms",
+      "buildType": "Reverse-engineered engine"
     },
     {
       "title": "Retro Engine v5 — RSDKv5",
       "projectUrl": "https://github.com/RSDKModding/RSDKv5-Decompilation",
-      "description": "Retro Engine v5 decompilation used by community game port projects.",
+      "description": "Open engine project for Sonic Mania-era titles; see original asset requirements.",
       "platforms": [
         "Desktop"
-      ]
-    },
-    {
-      "title": "dhewm3",
-      "projectUrl": "https://github.com/dhewm/dhewm3",
-      "description": "Modern Doom 3 source port for desktop systems.",
-      "platforms": [
-        "Desktop"
-      ]
+      ],
+      "origin": "Other platforms",
+      "buildType": "Reverse-engineered engine"
     },
     {
       "title": "Zelda 3 — A Link to the Past",
       "projectUrl": "https://github.com/snesrev/zelda3",
-      "description": "Reverse-engineered engine and PC port project for A Link to the Past.",
+      "description": "Reverse-engineered engine and PC port project.",
       "platforms": [
         "Desktop",
         "SNES"
-      ]
+      ],
+      "origin": "SNES",
+      "buildType": "Source-based port"
     },
     {
-      "title": "Zelda 64: Recompiled",
+      "title": "Zelda 64: Recompiled — Majora's Mask",
       "projectUrl": "https://github.com/Zelda64Recomp/Zelda64Recomp",
-      "description": "Static recompilation project bringing Majora's Mask to desktop platforms.",
+      "description": "Static recompilation project for Majora's Mask on desktop platforms.",
       "platforms": [
-        "Desktop",
+        "Windows",
+        "Linux",
         "Nintendo 64"
-      ]
+      ],
+      "origin": "Nintendo 64",
+      "buildType": "Native recompilation"
     }
   ]
 }
