@@ -1,4 +1,4 @@
-name: NovaHub macOS application
+name: NovaHub macOS bundled-engine application
 on:
   push:
     branches:
@@ -41,16 +41,45 @@ jobs:
             <key>CFBundleName</key><string>NovaHub</string>
             <key>CFBundleDisplayName</key><string>NovaHub</string>
             <key>CFBundlePackageType</key><string>APPL</string>
-            <key>CFBundleShortVersionString</key><string>0.1.0</string>
-            <key>CFBundleVersion</key><string>1</string>
+            <key>CFBundleShortVersionString</key><string>0.2.0</string>
+            <key>CFBundleVersion</key><string>2</string>
             <key>LSMinimumSystemVersion</key><string>13.0</string>
             <key>NSHighResolutionCapable</key><true/>
           </dict></plist>
           PLIST
-          /usr/bin/codesign --force --sign - --timestamp=none "$APP"
+          # Bundle the macOS-native Intel Wine engine inside NovaHub.app.
+          # Pinned upstream release from https://github.com/Gcenx/macOS_Wine_builds
+          WINE_URL="https://github.com/Gcenx/macOS_Wine_builds/releases/download/11.21/wine-staging-11.21-osx64.tar.xz"
+          WINE_SHA256="d7bcd5abf4df27aae397a7898aef074fea4a2e0b51e0a55aa9659517bbf9d452"
+          curl --fail --location --retry 3 --output /tmp/novahub-wine.tar.xz "$WINE_URL"
+          echo "$WINE_SHA256  /tmp/novahub-wine.tar.xz" | shasum -a 256 -c -
+          RES="$APP/Contents/Resources"
+          mkdir -p "$RES/WineRuntime"
+          tar -xJf /tmp/novahub-wine.tar.xz -C "$RES/WineRuntime"
+          echo "Extracted Wine runtime directory:"
+          find "$RES/WineRuntime" -maxdepth 5 -type d | head -35 || true
+          WINE_BIN="$(find -L "$RES/WineRuntime" -type f -name wine -print -quit)"
+          if [ -z "$WINE_BIN" ]; then
+            echo "Wine executable not found in the upstream archive."
+            exit 1
+          fi
+          chmod +x "$WINE_BIN"
+          echo "Wine binary: $WINE_BIN"
+          "$WINE_BIN" --version
+          echo "Wine executable relative to bundled root:"
+          printf '%s\n' "\${WINE_BIN#"$RES/WineRuntime/"}" > "$RES/wine-bin.txt"
+          cat > "$RES/ENGINE-LICENSES.txt" <<'NOTICE'
+          NovaHub embeds an unmodified Wine Staging 11.21 macOS runtime from Gcenx.
+          Source and license information: https://github.com/wine-mirror/wine
+          Package source and redistributor: https://github.com/Gcenx/macOS_Wine_builds/releases/tag/11.21
+          Wine is free software distributed under the GNU LGPL (version 2.1 or later).
+          Third-party runtime components retain their respective licenses.
+          NOTICE
+          # Ad-hoc signing for development. No Apple notarisation is supplied.
+          /usr/bin/codesign --force --deep --sign - --timestamp=none "$APP"
           /usr/bin/codesign --verify --verbose "$APP"
           file "$APP/Contents/MacOS/NovaHub"
-          /usr/bin/ditto -c -k --keepParent "$APP" "$PWD/dist/NovaHubMac-v0.1-universal.zip"
+          /usr/bin/ditto -c -k --keepParent "$APP" "$PWD/dist/NovaHubMac-v0.2-integrated.zip"
       - name: Upload .app bundle
         uses: actions/upload-artifact@v4
         with:
