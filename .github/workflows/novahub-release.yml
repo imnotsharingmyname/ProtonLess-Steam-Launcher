@@ -83,7 +83,7 @@ jobs:
       - name: Upload .app bundle
         uses: actions/upload-artifact@v4
         with:
-          name: NovaHubMac-v0.1-universal
-          path: dist/NovaHubMac-v0.1-universal.zip
+          name: NovaHubMac-v0.2-integrated
+          path: dist/NovaHubMac-v0.2-integrated.zip
           if-no-files-found: error
           retention-days: 30
