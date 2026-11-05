@@ -67,7 +67,8 @@ jobs:
           echo "Wine binary: $WINE_BIN"
           "$WINE_BIN" --version
           echo "Wine executable relative to bundled root:"
-          printf '%s\n' "\${WINE_BIN#"$RES/WineRuntime/"}" > "$RES/wine-bin.txt"
+          WINE_REL="$(python3 -c 'import os,sys;print(os.path.relpath(sys.argv[1],sys.argv[2]))' "$WINE_BIN" "$RES/WineRuntime")"
+          printf '%s\n' "$WINE_REL" > "$RES/wine-bin.txt"
           cat > "$RES/ENGINE-LICENSES.txt" <<'NOTICE'
           NovaHub embeds an unmodified Wine Staging 11.21 macOS runtime from Gcenx.
           Source and license information: https://github.com/wine-mirror/wine
