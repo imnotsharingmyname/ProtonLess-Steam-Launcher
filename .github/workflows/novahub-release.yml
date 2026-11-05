@@ -1,0 +1,60 @@
+name: NovaHub macOS application
+on:
+  push:
+    branches:
+      - build/novahub-mac-v0-1
+    paths:
+      - "NovaHubMac/**"
+      - ".github/workflows/novahub-release.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-macos:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build universal macOS application
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="$PWD/dist/NovaHub.app"
+          mkdir -p "$APP/Contents/MacOS"
+          SDK="$(xcrun --sdk macosx --show-sdk-path)"
+          for ARCH in x86_64 arm64; do
+            xcrun swiftc -parse-as-library -O \
+              -target "$ARCH-apple-macosx13.0" \
+              -sdk "$SDK" \
+              -framework SwiftUI -framework AppKit -framework Metal \
+              NovaHubMac/App.swift -o "/tmp/NovaHub-$ARCH"
+          done
+          lipo -create /tmp/NovaHub-x86_64 /tmp/NovaHub-arm64 \
+            -output "$APP/Contents/MacOS/NovaHub"
+          cat > "$APP/Contents/Info.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+            "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>CFBundleExecutable</key><string>NovaHub</string>
+            <key>CFBundleIdentifier</key><string>dev.novahub.mac</string>
+            <key>CFBundleName</key><string>NovaHub</string>
+            <key>CFBundleDisplayName</key><string>NovaHub</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>0.1.0</string>
+            <key>CFBundleVersion</key><string>1</string>
+            <key>LSMinimumSystemVersion</key><string>13.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict></plist>
+          PLIST
+          /usr/bin/codesign --force --sign - --timestamp=none "$APP"
+          /usr/bin/codesign --verify --verbose "$APP"
+          file "$APP/Contents/MacOS/NovaHub"
+          /usr/bin/ditto -c -k --keepParent "$APP" "$PWD/dist/NovaHubMac-v0.1-universal.zip"
+      - name: Upload .app bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: NovaHubMac-v0.1-universal
+          path: dist/NovaHubMac-v0.1-universal.zip
+          if-no-files-found: error
+          retention-days: 30
