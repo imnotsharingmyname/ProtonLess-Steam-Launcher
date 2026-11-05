@@ -68,7 +68,7 @@ final class Library: ObservableObject {
         let g = Game(title: url.deletingPathExtension().lastPathComponent, path: url.path)
         data.games.append(g)
         save()
-        message = "Imported \(g.title). Choose its runtime in game settings."
+        message = "Imported \(g.title). NovaHub built-in Wine is selected by default."
         return g
     }
     func update(_ game: Game) {
@@ -81,7 +81,17 @@ final class Library: ObservableObject {
         data.games.removeAll { $0.id == game.id }
         save()
     }
+    private func embeddedWine() -> String? {
+        guard let resources = Bundle.main.resourceURL else { return nil }
+        let relative = (try? String(contentsOf: resources.appendingPathComponent("wine-bin.txt"), encoding: .utf8))
+            ?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let relative, !relative.isEmpty, !relative.contains(".."), !relative.hasPrefix("/") else { return nil }
+        let executable = resources.appendingPathComponent("WineRuntime", isDirectory: true)
+            .appendingPathComponent(relative).path
+        return FileManager.default.isExecutableFile(atPath: executable) ? executable : nil
+    }
     func available(_ engine: Engine) -> String? {
+        if engine == .wine, let embedded = embeddedWine() { return embedded }
         let candidates: [String]
         switch engine {
         case .wine:
@@ -91,8 +101,7 @@ final class Library: ObservableObject {
                 "/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine",
                 "~/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine"]
         }
-        return candidates
-            .map { ($0 as NSString).expandingTildeInPath }
+        return candidates.map { ($0 as NSString).expandingTildeInPath }
             .first { !$0.isEmpty && FileManager.default.isExecutableFile(atPath: $0) }
     }
     func launch(_ game: Game) {
@@ -101,7 +110,7 @@ final class Library: ObservableObject {
             message = "Game not found: \(game.path)"; return
         }
         guard let enginePath = available(game.engine) else {
-            message = "\(game.engine.rawValue) not found. Set the executable path in Settings."; return
+            message = "\(game.engine.rawValue) not found. This build needs the integrated Wine runtime."; return
         }
         do {
             let logDir = FileManager.default.homeDirectoryForCurrentUser
@@ -205,7 +214,7 @@ struct MainView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Your Library").font(.system(size: 31, weight: .bold))
-                        Text("Windows games, one beautiful home.").foregroundStyle(Theme.muted)
+                        Text("Windows games with a built-in compatibility engine.").foregroundStyle(Theme.muted)
                     }
                     Spacer()
                     Button { editor = library.addGame() } label: {
@@ -224,7 +233,7 @@ struct MainView: View {
                             .font(.system(size: 60)).foregroundStyle(Theme.accent)
                         Text(library.data.games.isEmpty ? "Add your first game" : "No matching games")
                             .font(.title2.bold())
-                        Text("Import a Windows .exe and configure Wine or CrossOver.")
+                        Text("Import a Windows .exe and play using the bundled engine.")
                             .foregroundStyle(Theme.muted)
                         Button("Import Windows Game") { editor = library.addGame() }
                             .buttonStyle(.borderedProminent)
@@ -303,7 +312,7 @@ struct MainView: View {
         HStack {
             Circle().fill(library.available(engine) == nil ? .orange : .green)
                 .frame(width: 7, height: 7)
-            Text(engine.rawValue)
+            Text(engine == .wine ? "Built-in Wine" : engine.rawValue)
             Spacer()
             Text(library.available(engine) == nil ? "Missing" : "Found")
                 .font(.caption).foregroundStyle(Theme.muted)
@@ -385,7 +394,7 @@ private struct SettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Runtimes & Diagnostics").font(.title2.bold())
-            Text("NovaHub uses your existing Wine or CrossOver installation.")
+            Text("NovaHub includes Wine for Intel/AMD Macs. External Wine and CrossOver remain optional.")
                 .foregroundStyle(Theme.muted)
             GroupBox("Graphics") {
                 VStack(alignment: .leading) {
