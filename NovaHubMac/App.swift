@@ -83,8 +83,7 @@ final class Library: ObservableObject {
     }
     private func embeddedWine() -> String? {
         guard let resources = Bundle.main.resourceURL else { return nil }
-        let relative = (try? String(contentsOf: resources.appendingPathComponent("wine-bin.txt"), encoding: .utf8))
-            ?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let relative = (try? String(contentsOf: resources.appendingPathComponent("wine-bin.txt"), encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let relative, !relative.isEmpty, !relative.contains(".."), !relative.hasPrefix("/") else { return nil }
         let executable = resources.appendingPathComponent("WineRuntime", isDirectory: true)
             .appendingPathComponent(relative).path
